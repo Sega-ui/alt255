@@ -4,6 +4,10 @@ local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+
+-- TEAM CHECK DEĞİŞKENİ (YENİ EKLENDİ)
+local teamCheckOn = false 
+
 local function isTargetVisible(targetPart)
 	if not targetPart then return false end
 
@@ -17,6 +21,7 @@ local function isTargetVisible(targetPart)
 	local result = workspace:Raycast(origin, direction, params)
 	return result and result.Instance:IsDescendantOf(targetPart.Parent)
 end
+
 -- GUI AYARLARI
 local gui = Instance.new("ScreenGui")
 gui.Parent = player:WaitForChild("PlayerGui")
@@ -62,7 +67,7 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- FPS MODUNDA FARE KİTLİ KALMASIN DİYE
+-- FPS MODUNDA FARE KİLİTLİ KALMASIN DİYE
 game:GetService("UserInputService").InputChanged:Connect(function(input)
     if gui.Enabled and input.UserInputType == Enum.UserInputType.MouseMovement then
         -- GUI açıkken fare hareketi engellenmesin
@@ -87,7 +92,7 @@ main.Position = UDim2.fromScale(0.5,0.5) - UDim2.fromOffset(410,230)
 main.BackgroundColor3 = Color3.fromRGB(15,15,20)
 main.BorderSizePixel = 0
 
--- GUI AÇILDIĞINDA FARE KİTLİLİĞİNİ ÖNLEMEK İÇİN
+-- GUI AÇILDIĞINDA FARE KİLİTLİLİĞİNİ ÖNLEMEK İÇİN
 main.Active = true
 main.Selectable = true
 
@@ -275,7 +280,8 @@ sFill.BackgroundColor3 = Color3.fromRGB(0,255,255)
 
 sBar.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1 then
-		local c; c = UIS.InputChanged:Connect(function(m)
+		local c;
+		c = UIS.InputChanged:Connect(function(m)
 			if m.UserInputType == Enum.UserInputType.MouseMovement then
 				local pct = math.clamp(
 					(m.Position.X - sBar.AbsolutePosition.X) / sBar.AbsoluteSize.X,
@@ -337,7 +343,8 @@ flySpeedFill.BackgroundColor3 = Color3.fromRGB(0,255,255)
 -- FLY SPEED SLIDER LOGIC
 flySpeedBar.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1 then
-		local c; c = UIS.InputChanged:Connect(function(m)
+		local c;
+		c = UIS.InputChanged:Connect(function(m)
 			if m.UserInputType == Enum.UserInputType.MouseMovement then
 				local pct = math.clamp(
 					(m.Position.X - flySpeedBar.AbsolutePosition.X) / flySpeedBar.AbsoluteSize.X,
@@ -430,7 +437,7 @@ local function startFly()
 			direction = direction + Vector3.new(0, -1, 0)
 		end
 		
-		-- Hızı uygula
+		-- Hız uygula
 		if direction.Magnitude > 0 then
 			direction = direction.Unit * flySpeed
 		end
@@ -570,6 +577,27 @@ gotoBtn.MouseButton1Click:Connect(function()
 	end
 end)
 
+-- *** YENİ EKLENEN: TEAM CHECK BUTTON ***
+local teamBtn = Instance.new("TextButton", playersTab)
+teamBtn.Size = UDim2.fromOffset(200, 40)
+teamBtn.Position = UDim2.fromOffset(20, 70) -- GOTO'nun altına yerleştirildi
+teamBtn.Text = "Team Check: OFF"
+teamBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+teamBtn.TextColor3 = Color3.fromRGB(0, 255, 255)
+teamBtn.Font = Enum.Font.GothamBold
+teamBtn.TextSize = 14
+teamBtn.AutoButtonColor = true
+teamBtn.Active = true
+Instance.new("UICorner", teamBtn).CornerRadius = UDim.new(0, 8)
+
+teamBtn.MouseButton1Click:Connect(function()
+    teamCheckOn = not teamCheckOn
+    teamBtn.Text = teamCheckOn and "Team Check: ON" or "Team Check: OFF"
+    -- Açıkken yeşil, kapalıyken normal renk yapalım
+    teamBtn.BackgroundColor3 = teamCheckOn and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(35, 35, 45)
+end)
+
+
 -- ========== VISUALS TAB ==========
 
 -- FULLBRIGHT
@@ -636,7 +664,8 @@ dFill.BackgroundColor3 = Color3.fromRGB(0,255,255)
 -- SLIDER LOGIC
 dBar.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1 then
-		local c; c = UIS.InputChanged:Connect(function(m)
+		local c;
+		c = UIS.InputChanged:Connect(function(m)
 			if m.UserInputType == Enum.UserInputType.MouseMovement then
 				local pct = math.clamp(
 					(m.Position.X - dBar.AbsolutePosition.X) / dBar.AbsoluteSize.X,
@@ -717,7 +746,7 @@ local function removeESP(plr)
 	end
 end
 
--- ESP UPDATE LOOP
+-- ESP UPDATE LOOP (GÜNCELLENDİ: TEAM CHECK EKLENDİ)
 RunService.RenderStepped:Connect(function()
 	if not espOn then return end
 	
@@ -728,6 +757,13 @@ RunService.RenderStepped:Connect(function()
 	if not myHRP then return end
 	
 	for plr, data in pairs(espObjects) do
+        -- *** TEAM CHECK KONTROLÜ ***
+        if teamCheckOn and plr.Team == player.Team then
+            data.hl.Enabled = false
+            data.bill.Enabled = false
+            continue -- Takım arkadaşı ise ESP işlemlerini atla
+        end
+
 		if plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
 			local targetHRP = plr.Character.HumanoidRootPart
 			
@@ -793,7 +829,7 @@ local controlsInfo = Instance.new("TextLabel", misc)
 controlsInfo.Size = UDim2.fromOffset(360, 120)
 controlsInfo.Position = UDim2.fromOffset(20, 130)
 controlsInfo.BackgroundTransparency = 1
-controlsInfo.Text = "🏃 FLY KONTROLLERİ:\nW,A,S,D = Hareket\nSpace = Yukarı Çık\nShift = Aşağı İn\n\n🎮 NOCLIP:\nAktif edince duvardan geçebilirsin!"
+controlsInfo.Text = " FLY KONTROLLER:\nW,A,S,D = Hareket\nSpace = Yukarı Çık\nShift = Aşağı İn\n\n NOCLIP:\nAktif edince duvardan geçebilirsin!"
 controlsInfo.TextColor3 = Color3.fromRGB(0, 255, 255)
 controlsInfo.Font = Enum.Font.GothamBold
 controlsInfo.TextSize = 14
@@ -838,7 +874,7 @@ end)
 player.CharacterAdded:Connect(function(character)
 	task.wait(0.5)
 	
-	-- Speed'ı yeniden uygula
+	-- Speed'i yeniden uygula
 	if speedOn then
 		local hum = character:WaitForChild("Humanoid")
 		hum.WalkSpeed = speed
@@ -851,7 +887,7 @@ player.CharacterAdded:Connect(function(character)
 		startFly()
 	end
 	
-	-- NoClip'ı yeniden başlat
+	-- NoClip'i yeniden başlat
 	if noclipOn then
 		stopNoclip()
 		task.wait(0.1)
@@ -866,7 +902,8 @@ local silentAimOn = false
 local aimbotKey = Enum.KeyCode.F -- F tuşuna basılı tutunca aktif
 local aimbotFOV = 100 -- Field of View (görüş alanı)
 local aimbotSmoothness = 20 -- Yumuşaklık (1 = anında, 100 = çok yavaş)
-local aimbotPart = "Head" -- Varsayılan hedef: Head, Torso, HumanoidRootPart
+local aimbotPart = "Head" 
+-- Varsayılan hedef: Head, Torso, HumanoidRootPart
 
 -- AIMBOT DEĞİŞKENLERİ
 local camera = workspace.CurrentCamera
@@ -881,7 +918,7 @@ circle.Radius = aimbotFOV
 circle.Filled = false
 circle.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
 
--- EN YAKIN OYUNCUYU BUL
+-- EN YAKIN OYUNCUYU BUL (GÜNCELLENDİ: TEAM CHECK EKLENDİ)
 local function getClosestPlayer()
 	if not player.Character then return nil end
 	local myHead = player.Character:FindFirstChild("Head")
@@ -893,6 +930,11 @@ local function getClosestPlayer()
 	
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr ~= player and plr.Character then
+            -- *** TEAM CHECK KONTROLÜ ***
+            if teamCheckOn and plr.Team == player.Team then
+                continue -- Takım arkadaşı ise hedef alma
+            end
+
 			local targetHead = plr.Character:FindFirstChild(aimbotPart)
 			if targetHead then
 				local screenPos, onScreen = camera:WorldToViewportPoint(targetHead.Position)
@@ -928,10 +970,9 @@ local function silentAim()
 	local mousePos = Vector2.new(screenPos.X, screenPos.Y)
 	
 	-- Burada mouse pozisyonunu manipüle edebilirsin
-	-- (Advanced: mouse hooking gerekebilir)
 end
 
--- REGULAR AIMBOT: MOUSE'U HEDEFE KİTLET
+-- REGULAR AIMBOT: MOUSE'U HEDEFE KİLİTLE
 local function regularAimbot()
 	if not aimbotOn then return end
 
@@ -939,9 +980,9 @@ local function regularAimbot()
 	if not targetPlr then return end
 	if not targetPlr.Character then return end
 
-local targetPart = targetPlr.Character:FindFirstChild(aimbotPart)
-if not targetPart then return end
-if not isTargetVisible(targetPart) then return end
+    local targetPart = targetPlr.Character:FindFirstChild(aimbotPart)
+    if not targetPart then return end
+    if not isTargetVisible(targetPart) then return end
 
 	local camCF = camera.CFrame
 	local camPos = camCF.Position
@@ -1000,7 +1041,8 @@ fovFill.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
 
 fovBar.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1 then
-		local c; c = UIS.InputChanged:Connect(function(m)
+		local c;
+		c = UIS.InputChanged:Connect(function(m)
 			if m.UserInputType == Enum.UserInputType.MouseMovement then
 				local pct = math.clamp((m.Position.X - fovBar.AbsolutePosition.X) / fovBar.AbsoluteSize.X, 0, 1)
 				fovFill.Size = UDim2.new(pct, 0, 1, 0)
@@ -1036,7 +1078,8 @@ smoothFill.BackgroundColor3 = Color3.fromRGB(0, 255, 255)
 
 smoothBar.InputBegan:Connect(function(i)
 	if i.UserInputType == Enum.UserInputType.MouseButton1 then
-		local c; c = UIS.InputChanged:Connect(function(m)
+		local c;
+		c = UIS.InputChanged:Connect(function(m)
 			if m.UserInputType == Enum.UserInputType.MouseMovement then
 				local pct = math.clamp((m.Position.X - smoothBar.AbsolutePosition.X) / smoothBar.AbsoluteSize.X, 0, 1)
 				smoothFill.Size = UDim2.new(pct, 0, 1, 0)
@@ -1065,7 +1108,7 @@ local parts = {"Head", "Torso", "HumanoidRootPart", "LeftFoot", "RightFoot", "Le
 local partDropdown = Instance.new("TextButton", aimbotTab)
 partDropdown.Size = UDim2.fromOffset(180, 36)
 partDropdown.Position = UDim2.fromOffset(20, 230)
-partDropdown.Text = "▼ " .. aimbotPart
+partDropdown.Text = " " .. aimbotPart
 partDropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 partDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
 partDropdown.Font = Enum.Font.Gotham
@@ -1079,12 +1122,12 @@ partDropdown.MouseButton1Click:Connect(function()
 	if dropdownOpen then
 		if dropdownFrame then dropdownFrame:Destroy() end
 		dropdownOpen = false
-		partDropdown.Text = "▼ " .. aimbotPart
+		partDropdown.Text = " " .. aimbotPart
 		return
 	end
 	
 	dropdownOpen = true
-	partDropdown.Text = "▲ " .. aimbotPart
+	partDropdown.Text = " " .. aimbotPart
 	
 	dropdownFrame = Instance.new("Frame", aimbotTab)
 	dropdownFrame.Size = UDim2.fromOffset(180, 200)
@@ -1108,7 +1151,7 @@ partDropdown.MouseButton1Click:Connect(function()
 		partBtn.MouseButton1Click:Connect(function()
 			aimbotPart = partName
 			partLabel.Text = "Target: " .. aimbotPart
-			partDropdown.Text = "▼ " .. aimbotPart
+			partDropdown.Text = " " .. aimbotPart
 			dropdownFrame:Destroy()
 			dropdownOpen = false
 		end)
@@ -1286,7 +1329,7 @@ boneESPBtn.MouseButton1Click:Connect(function()
 			createBoneESP(plr)
 		end
 	else
-		for plr, _ in pairs(boneDrawings) do
+		for _, plr in pairs(Players:GetPlayers()) do
 			removeBoneESP(plr)
 		end
 	end
@@ -1338,14 +1381,14 @@ local aimbotInfo = Instance.new("TextLabel", aimbotTab)
 aimbotInfo.Size = UDim2.fromOffset(400, 100)
 aimbotInfo.Position = UDim2.fromOffset(20, 320)
 aimbotInfo.BackgroundTransparency = 1
-aimbotInfo.Text = "🎯 AIMBOT KULLANIMI:\n• F tuşuna basılı tut = Aimbot aktif\n• Silent Aim = Gizli nişan alma\n• FOV = Hedefleme alanı\n• Smoothness = Yumuşaklık\n• Bone ESP = Kemikleri gör"
+aimbotInfo.Text = " AIMBOT KULLANIMI:\n• F tuşuna basılı tut = Aimbot aktif\n• Silent Aim = Gizli nişan alma\n• FOV = Hedefleme alanı\n• Smoothness = Yumuşaklık\n• Bone ESP = Kemikleri gör"
 aimbotInfo.TextColor3 = Color3.fromRGB(0, 255, 255)
 aimbotInfo.Font = Enum.Font.Gotham
 aimbotInfo.TextSize = 12
 aimbotInfo.TextWrapped = true
 aimbotInfo.TextXAlignment = Enum.TextXAlignment.Left
 
-print("🎯 Aimbot sistemi yüklendi! F tuşuna basılı tutarak kullanabilirsin.")
+print(" Aimbot sistemi yüklendi! F tuşuna basılı tutarak kullanabilirsin.")
 -- GUI KAPANDIĞINDA FAREYİ KAPAT
 gui:GetPropertyChangedSignal("Enabled"):Connect(function()
 	if not gui.Enabled then
@@ -1360,4 +1403,4 @@ print("INSERT tuşuna basarak aç/kapa")
 print("ESC tuşuna basarak kapat")
 print("Fly aktifken: WASD + Space/Shift")
 print("FPS modunda fare kilitli kalırsa INSERT'a bas!")
-print("=========================================")	
+print("=========================================")
